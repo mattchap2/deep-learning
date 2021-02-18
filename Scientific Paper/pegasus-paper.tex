@@ -15,51 +15,76 @@
 \begin{document}
 \maketitle
 \begin{abstract}
-    This paper proposes using a deep convolutional generative adversarial network (DCGAN) to generate images that look like a Pegasus. This abstract should be short and concise, about 8-10 lines long.
+    This paper proposes using a deep convolutional generative adversarial network (DCGAN) to generate images that look like a Pegasus. This abstract should be short and concise, about 8-10 lines long. This abstract should be short and concise, about 8-10 lines long. This abstract should be short and concise, about 8-10 lines long. This abstract should be short and concise, about 8-10 lines long. This abstract should be short and concise, about 8-10 lines long. This abstract should be short and concise, about 8-10 lines long. This abstract should be short and concise, about 8-10 lines long.
 \end{abstract}
 
 \section{Methodology}
 \subsection{Underpinning mathematical theory}
-The method is to train a deep convolutional generative adversarial network (DCGAN) \cite{article}, by minimising the GAN loss function: 
+The method is to train a deep convolutional generative adversarial network (DCGAN) \cite{article}, by having two networks, $D$ and $G$, play the following two-player minimax game with value function $V(D, G)$: 
 \begin{equation}
-    \underset{G}{\text{min}} \underset{D}{\text{max}}V(D,G) = \mathbb{E}_{x\sim p_{data}(x)}\big[logD(x)\big] + \mathbb{E}_{z\sim p_{z}(z)}\big[log(1-D(G(z)))\big].
+    \underset{G}{\text{min}} \ \underset{D}{\text{max}} \ V(D,G) = \mathbb{E}_{x\sim p_{data}(x)}\big[logD(x)\big] + \mathbb{E}_{z\sim p_{z}(z)}\big[log(1-D(G(z)))\big].
 \end{equation}
-The discriminator network, $D$, discriminates between real and fake images. $D$ takes as input an image, $x$, and outputs the scalar probability, $D(x)$, that $x$ came from training data (real) rather than the generator (fake). Here, $x$ is a $32 \times 32$ pixel RGB image.  
+The discriminator network, $D$, discriminates between real and fake images. $D$ takes as input an image, $x$, and outputs the scalar probability, $D(x)$, that $x$ came from training data (real) rather than the generator (fake). 
 
-The generator network, $G$, generates fake images. $G$ takes as input a latent space vector, $z$, sampled from a standard normal distribution, and outputs the mapped vector, $D(z)$, in data-space (i.e. a $32 \times 32$ pixel RGB image). 
+The generator network, $G$, generates fake images. $G$ takes as input a latent space vector, $z$, sampled from a standard normal distribution, $p_z$, and outputs the mapped vector, $D(z)$, in data space (e.g. a space of dimension $3 \times 32 \times 32$, which corresponds to the number of channels, height, and width of an image). 
 
-GANs proceed by simultaneously training both $G$ and $D$. In particular, the training procedure for $G$ is to maximise the probability of $D$ making a mistake. A unique solution exists, and is achieved when $G$ estimates exactly the training data distribution, $p_{data}$, so $D(x)$ equals $\frac{1}{2}$ everywhere \cite{NIPS2014_5ca3e9b1}.
+GANs proceed by simultaneously training both $G$ and $D$. We train $D$ to maximise $logD(x)$, the probability of $D$ assigning the correct label to both real and fake images. At the same time, we train $G$ to minimise $log(1-D(G(z)))$, the probability of $D$ assigning the correct label to a fake image. Alternatively, we can train $G$ to maximise $logD(G(z))$, the probability of $D$ assigning the incorrect label to a fake image (i.e. making a mistake), which results in the same dynamics of $G$ and $D$ \cite{NIPS2014_5ca3e9b1}. 
 
-\subsection{Architecture}
+There exists a unique solution (global optimum) to the minimax game. This is achieved when $G$'s estimate of the training data distribution, $p_g$, matches exactly the true training data distribution, $p_{data}$. When $p_g = p_{data}$, the fake images $G$ generates (by sampling from $p_g$) are indistinguishable from the real images (sampled from $p_{data}$), so $D(x)$ equals $\frac{1}{2}$ for all $x$, since the discriminator can do no better than guess whether $x$ is real or fake.
+
+We discuss the limitations of using a GAN in our approach in Section 3.
+
+\subsection{Architectural design}
 The architectural diagram for our approach is as follows:
 \begin{center}
     \includegraphics[width=0.5\textwidth]{figures/architecture.pdf}
 \end{center}
-The architectural diagram above was created using Inkscape and exported to a PDF. This was then uploaded to the figures directory on the left.
 
-\subsection{Approach}
-First, we trained a deep convolutional generative adversarial network (DCGAN)~\cite{} on only the images with the `horse' label in the CIFAR-10 dataset. We did this with the hope of generating images of horses which we can later transform into pegasi. We trained the network for 5, 50, 100, 150, and 200 epochs separately, with a batch size of 64, and generated fake images each time (see Appendix A). By qualitative comparison of the results, it was decided that training for 100 epochs generated the most realistic images (see Section 3 for the limitations of using DCGANs).  
+We also illustrate the architecture of our generator and discriminator in figure 1 and figure 2 respectively. 
 
-Second, we tried fine-tuning the pre-trained network on only the images with the 'bird' label in the CIFAR-10 dataset. We did this thinking that the network might generate images of horses with some bird features, thus resembling a pegasi. We fine-tuned the network for 5, 25, and 50 epochs separately, with a batch size of 64, and generated fake images each time (see Appendix B). By inspection of the results, it was decided that this was not a suitable approach for producing pegasi.  
+\begin{center}
+    \includegraphics[width=1\textwidth]{figures/generator.png}
+\end{center}
 
-Third, we tried fine-tuning the pre-trained network on a hand-selected image (see Appendix C). We did this hoping that the network would recognise the key feature shared by birds and pegasi --- wings --- and reflect this in its output. We fine-tuned the network for 5, 25, and 50 epochs separately, with a batch size of 1, and generated fake images each time (see Appendix D). By inspection of the results, and given time constraints, it was decided that this method would have to suffice.  
+The generator architecture consists of four layers. The first layer takes as input a $100 \times 1 \times 1$ vector of noise (random numbers) sampled from the standard normal distribution, and consists of a convolutional transpose layer paired with a batch normalisation layer and ReLU activation function. The second and third layers are like the first. The fourth and final layer consists of a convolutional transpose layer with $tanh$ activation function, and outputs a $3 \times 32 \times 32$ image.  
 
+\begin{center}
+    \includegraphics[width=1\textwidth]{figures/discriminator.png}
+\end{center}
+
+The discriminator architecture also consists of four layers. The first layer takes as input a $3 \times 32 \times 32$ image, and consists of a convolutional transpose layer with Leaky ReLU activation function. The second and third layers are like the first, each paired with an additional batch normalisation layer. The fourth and final layer consists of a convolutional transpose layer with Sigmoid activation function, and outputs a probability. 
+
+\subsection{Implementation}
 
 \section{Results}
-The results look very blurry, where the best batch of images looks like this:
+The generated images are low resolution, but they are not blurry since there are clear-defined edges. The objects in them have realistic shapes because one can easily identify the body of a horse and distinguish between its features, including the torso, head, legs, and, in some cases, tail. The objects in them also have some texture, in particular where the shading highlights the mane and musculature. Although there is some noise, the generated images look real enough to classify as horse-like. 
+
+The images are not that different to their nearest neighbours in the dataset, indicating that the network has learned well the data distribution of horse images. Although the objects in the generated images all hold the same side-view pose, there is diversity between the samples within the batch of 64 provided, in the orientation of pose (left-facing and right-facing), colour (various shades of brown, black, and white), as well as stance (standing and moving). Unfortunately, few clearly identifiable winged horses were made --- the closest were horses with humps instead of wings. There is definitely mode collapse, since we observed the generator rotated through outputting horse-like objects against a green, grassy backdrop and outputting bird-like objects against a blue, cloudless backdrop (see Appendix). 
+
+The best batch of images looks like this:
 \begin{center}
     \includegraphics[width=0.5\textwidth]{figures/best-batch.png}
 \end{center}
-From this batch, the most Pegasus-like image (with quite a stretch of the imagination) is:
+
+From this batch, the most Pegasus-like image is:
 \begin{center}
     \includegraphics[width=0.075\textwidth]{figures/best-pegasus.png}
 \end{center}
 
 \section{Limitations}
-It's very difficult to see anything that looks like a Pegasus. In the future, this could be improved by training for more than 10 epochs, although this was not possible due to the time constraints.
+It's very difficult to see anything that looks like a Pegasus. This was anticipated since GANs are notoriously difficult to train due to having the following properties: non-convergence, diminishing gradient, difficult to balance, mode collapse \cite{}. 
+
+In the future, mode collapse in the GAN could be reduced by lowering the Lipschitz constant for the discriminator function, as was achieve by Wasserstein GANs \cite{arjovsky2017wasserstein} or by spectral normalisation \cite{DBLP:journals/corr/abs-1802-05957}, although this was not possible due to the time constraints.
 
 \section*{Bonuses}
-This submission has a total bonus of -4 marks (a penalty), as it is trained only on CIFAR-10, and the Pegasus has a dark body colour.
+This submission has a total bonus of -8 marks (a penalty), as it used an adversarial training method, is trained only on CIFAR-10, and the Pegasus has a dark body colour.
+
+\section{Appendix}
+First, we trained a deep convolutional generative adversarial network (DCGAN)~\cite{} on only the images with the `horse' label in the CIFAR-10 dataset. We did this with the hope of generating images of horses which we can later transform into pegasi. We trained the network for 5, 50, 100, 150, and 200 epochs separately, with a batch size of 64, and generated fake images each time (see Appendix A). By qualitative comparison of the results, it was decided that training for 100 epochs generated the most realistic images (see Section 3 for the limitations of using DCGANs).  
+
+Second, we tried fine-tuning the pre-trained network on only the images with the 'bird' label in the CIFAR-10 dataset. We did this thinking that the network might generate images of horses with some bird features, thus resembling a pegasi. We fine-tuned the network for 5, 25, and 50 epochs separately, with a batch size of 64, and generated fake images each time (see Appendix B). By inspection of the results, it was decided that this was not a suitable approach for producing pegasi.  
+
+Third, we tried fine-tuning the pre-trained network on a hand-selected image (see Appendix C). We did this hoping that the network would recognise the key feature shared by birds and pegasi --- wings --- and reflect this in its output. We fine-tuned the network for 5, 25, and 50 epochs separately, with a batch size of 1, and generated fake images each time (see Appendix D). By inspection of the results, and given time constraints, it was decided that this method would have to suffice.
 
 % you can have an unlimited number of references (they can go on the 5th page and span many additional pages without any penalty)
 \printbibliography
