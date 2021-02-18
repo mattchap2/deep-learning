@@ -32,14 +32,14 @@ GANs proceed by simultaneously training both $G$ and $D$. We train $D$ to maximi
 
 There exists a unique solution (global optimum) to the minimax game. This is achieved when $G$'s estimate of the training data distribution, $p_g$, matches exactly the true training data distribution, $p_{data}$. When $p_g = p_{data}$, the fake images $G$ generates (by sampling from $p_g$) are indistinguishable from the real images (sampled from $p_{data}$), so $D(x)$ equals $\frac{1}{2}$ for all $x$, since the discriminator can do no better than guess whether $x$ is real or fake.
 
-We discuss the limitations of using a GAN in our approach in Section 3.
-
-\subsection{Architectural design}
-The architectural diagram for our approach is as follows:
-\begin{center}
-    \includegraphics[width=0.5\textwidth]{figures/architecture.pdf}
-\end{center}
-
+\subsection{Architecture}
+An architectural diagram of the method is included:
+\begin{figure}[h]
+    \begin{center}
+        \includegraphics[width=1\textwidth]{figures/architecture.pdf}
+    \end{center}
+    \caption{Example of a parametric plot ($\sin (x), \cos(x), x$)}
+\end{figure}
 We also illustrate the architecture of our generator and discriminator in figure 1 and figure 2 respectively. 
 
 \begin{center}
