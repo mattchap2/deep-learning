@@ -28,36 +28,52 @@ The discriminator network, $D$, discriminates between real and fake images. $D$ 
 
 The generator network, $G$, generates fake images. $G$ takes as input a latent space vector, $z$, sampled from a standard normal distribution, $p_z$, and outputs the mapped vector, $D(z)$, in data space (e.g. a space of dimension $3 \times 32 \times 32$, which corresponds to the number of channels, height, and width of an image). 
 
-GANs proceed by simultaneously training both $G$ and $D$. We train $D$ to maximise $logD(x)$, the probability of $D$ assigning the correct label to both real and fake images. At the same time, we train $G$ to minimise $log(1-D(G(z)))$, the probability of $D$ assigning the correct label to a fake image. Alternatively, we can train $G$ to maximise $logD(G(z))$, the probability of $D$ assigning the incorrect label to a fake image (i.e. making a mistake), which results in the same dynamics of $G$ and $D$ \cite{NIPS2014_5ca3e9b1}. 
+GANs proceed by simultaneously training both $G$ and $D$. We train $D$ to maximise $logD(x)$, the probability of $D$ assigning the correct label to both real and fake images. At the same time, we train $G$ to minimise $log(1-D(G(z)))$, the probability of $D$ assigning the correct label to a fake image. Alternatively, we can train $G$ to maximise $logD(G(z))$, the probability of $D$ assigning the incorrect label to a fake image (i.e. making a mistake), which results in the same dynamics of $G$ and $D$. We decide to train $G$ with the latter objective function, since it is supposed to provides much stronger gradients early in learning \cite{NIPS2014_5ca3e9b1}.
 
 There exists a unique solution (global optimum) to the minimax game. This is achieved when $G$'s estimate of the training data distribution, $p_g$, matches exactly the true training data distribution, $p_{data}$. When $p_g = p_{data}$, the fake images $G$ generates (by sampling from $p_g$) are indistinguishable from the real images (sampled from $p_{data}$), so $D(x)$ equals $\frac{1}{2}$ for all $x$, since the discriminator can do no better than guess whether $x$ is real or fake.
 
 \subsection{Architecture}
-An architectural diagram of the method is included:
+An architectural diagram of the method is included in Figure \ref{fig:architecture}. More detailed architectural diagrams of the generator and discriminator networks are also included, in Figure \ref{fig:generator} and Figure \ref{fig:discriminator} respectively. Figures \ref{fig:generator} and \ref{fig:discriminator} were made using the online tool `\textit{NN-SVG}' \footnote{https://github.com/alexlenail/NN-SVG}.
+
 \begin{figure}[h]
     \begin{center}
         \includegraphics[width=1\textwidth]{figures/architecture.pdf}
     \end{center}
-    \caption{Example of a parametric plot ($\sin (x), \cos(x), x$)}
+    \caption{Method architectural diagram. Both generator and discriminator networks process data with a batch size of 64. The image data used to train the discriminator is a manually identified subset of the CIFAR-10 dataset. The motivation and method for doing this is explained in Section \ref{implementation}.}
+    \label{fig:architecture}
 \end{figure}
-We also illustrate the architecture of our generator and discriminator in figure 1 and figure 2 respectively. 
 
-\begin{center}
-    \includegraphics[width=1\textwidth]{figures/generator.png}
-\end{center}
+\begin{figure}[h]
+    \begin{center}
+        \includegraphics[width=1\textwidth]{figures/generator.png}
+    \end{center}
+    \caption{Generator architectural diagram. Transformations happen from left to right.}
+    \label{fig:generator}
+\end{figure}
 
-The generator architecture consists of four layers. The first layer takes as input a $100 \times 1 \times 1$ vector of noise (random numbers) sampled from the standard normal distribution, and consists of a convolutional transpose layer paired with a batch normalisation layer and ReLU activation function. The second and third layers are like the first. The fourth and final layer consists of a convolutional transpose layer with $tanh$ activation function, and outputs a $3 \times 32 \times 32$ image.  
+The generator architecture consists of four layers. The first layer takes as input a $100 \times 1 \times 1$ vector of noise (random numbers) sampled from the standard normal distribution, and consists of a convolutional transpose layer, with a $4 \times 4$ kernel, stride 1, and 0 padding, paired with a batch normalisation layer and ReLU activation function. The second and third layers are like the first, except with stride 2 and 1 padding. The fourth and final layer consists of a convolutional transpose layer, with a $4 \times 4$ kernel, stride 2, and 1 padding, with $tanh$ activation function, and outputs a $3 \times 32 \times 32$ image.  
 
-\begin{center}
-    \includegraphics[width=1\textwidth]{figures/discriminator.png}
-\end{center}
+\begin{figure}[h]
+    \begin{center}
+        \includegraphics[width=1\textwidth]{figures/discriminator.png}
+    \end{center}
+    \caption{Discriminator architectural diagram. The sequence of transformations flows from right to left.}
+    \label{fig:discriminator}
+\end{figure}
 
-The discriminator architecture also consists of four layers. The first layer takes as input a $3 \times 32 \times 32$ image, and consists of a convolutional transpose layer with Leaky ReLU activation function. The second and third layers are like the first, each paired with an additional batch normalisation layer. The fourth and final layer consists of a convolutional transpose layer with Sigmoid activation function, and outputs a probability. 
+The discriminator architecture also consists of four layers. The first layer takes as input a $3 \times 32 \times 32$ image, and consists of a convolutional transpose layer, with a $4 \times 4$ kernel, stride 2, and 1 padding, with Leaky ReLU activation function. The second and third layers are like the first, each paired with an additional batch normalisation layer. The fourth and final layer consists of a convolutional transpose layer, with a $4 \times 4$ kernel, stride 1, and 0 padding, with Sigmoid activation function, and outputs a probability. 
 
-\subsection{Implementation}
+\subsection{Implementation} \label{implementation}
+Our goal was to create unique and diverse images of winged horses that all looked like a Pegasus. We chose to use the CIFAR-10 dataset to train our DCGAN to synthesise a unique batch of 64 images.
+
+In order to create an image that looked like a Pegasus, we had to combine a horse's body with a bird's wings. The first step would be to identify good examples of images that exhibited these features clearly. Therefore, we manually identified birds and horses using the annotated class labels available for the CIFAR-10 images. However, upon inspecting the subset, it was noted that the required features were not often displayed clearly: not all horse images showed the horse's body --- instead, showing just the head --- and not all bird images showed birds with their wings outstretched --- instead, showing their beak or neck. 
+
+To get around this issue, we trained a convolutional neural network classifier by Chris Willcocks \footnote{https://colab.research.google.com/gist/cwkx/3a6eba039aa9f68d0b9d37a02216d385/convnet.ipynb} for 20 epochs, and used it to choose our model training data. By selecting only horse images that the classifier predicted correctly and with over 80\% confidence, it was almost guaranteed that the resulting horse images would be of the horse's entire body. Similarly, by selecting only bird images that the classifier misclassified as airplanes with over 80\% confidence, the resulting bird images would be of birds in mid-flight with outstretched wings.  
+
+From this, we made 10 batches of bird images and 10 batches of horse images, with a batch size of 64. Using a weighted random sampler, we trained the DCGAN on this data, and varied the number of epochs the model trained for, as well as the probability of the discriminator training on horse data versus bird data. Our best results were when the odds of training on a batch of horses to a batch of birds was 1:5.
 
 \section{Results}
-The generated images are low resolution, but they are not blurry since there are clear-defined edges. The objects in them have realistic shapes because one can easily identify the body of a horse and distinguish between its features, including the torso, head, legs, and, in some cases, tail. The objects in them also have some texture, in particular where the shading highlights the mane and musculature. Although there is some noise, the generated images look real enough to classify as horse-like. 
+The generated images are low resolution, but they are not blurry since there are clear-defined edges which outline the objects in them. The objects have realistic shapes because one can easily identify the body of a horse and distinguish between its features, including the torso, head, legs, and, in some cases, tail. The objects in them also have some texture, in particular where the shading highlights the mane and musculature. Although there is some noise, the generated images look real enough to classify as horse-like. 
 
 The images are not that different to their nearest neighbours in the dataset, indicating that the network has learned well the data distribution of horse images. Although the objects in the generated images all hold the same side-view pose, there is diversity between the samples within the batch of 64 provided, in the orientation of pose (left-facing and right-facing), colour (various shades of brown, black, and white), as well as stance (standing and moving). Unfortunately, few clearly identifiable winged horses were made --- the closest were horses with humps instead of wings. There is definitely mode collapse, since we observed the generator rotated through outputting horse-like objects against a green, grassy backdrop and outputting bird-like objects against a blue, cloudless backdrop (see Appendix). 
 
@@ -72,9 +88,13 @@ From this batch, the most Pegasus-like image is:
 \end{center}
 
 \section{Limitations}
-It's very difficult to see anything that looks like a Pegasus. This was anticipated since GANs are notoriously difficult to train due to having the following properties: non-convergence, diminishing gradient, difficult to balance, mode collapse \cite{}. 
+It's very difficult to see anything that looks like a Pegasus. This was anticipated since GANs are notoriously difficult to train due to having the following properties: non-convergence, diminishing gradient, difficult to balance, and mode collapse \cite{}. 
 
-In the future, mode collapse in the GAN could be reduced by lowering the Lipschitz constant for the discriminator function, as was achieve by Wasserstein GANs \cite{arjovsky2017wasserstein} or by spectral normalisation \cite{DBLP:journals/corr/abs-1802-05957}, although this was not possible due to the time constraints.
+In the future, mode collapse in the GAN could be reduced by lowering the Lipschitz constant for the discriminator function, as was achieve by Wasserstein GANs \cite{arjovsky2017wasserstein} or by spectral normalisation \cite{DBLP:journals/corr/abs-1802-05957}. 
+
+Furthermore the diversity and quantity of training data could have been improved by incorporating data from the STL-10 dataset. 
+
+although this was not possible due to the time constraints.
 
 \section*{Bonuses}
 This submission has a total bonus of -8 marks (a penalty), as it used an adversarial training method, is trained only on CIFAR-10, and the Pegasus has a dark body colour.
